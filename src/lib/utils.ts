@@ -15,8 +15,13 @@ export function generateRoomId(length: number = 6): string {
 }
 
 export function calculateWpm(correctChars: number, timeElapsedSeconds: number): number {
-  if (timeElapsedSeconds <= 0) return 0;
+  // Wait for at least a small amount of time to pass (e.g., 0.25s) for a more stable WPM,
+  // or if no characters have been typed correctly yet.
+  if (timeElapsedSeconds < 0.25 || correctChars === 0) {
+    return 0;
+  }
   const minutes = timeElapsedSeconds / 60;
+  // minutes should not be 0 here due to the timeElapsedSeconds < 0.25 check
   const words = correctChars / 5; // Standard WPM calculation: 5 chars = 1 word
   return Math.round(words / minutes);
 }

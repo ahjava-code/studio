@@ -9,7 +9,8 @@ interface WpmBarProps {
 }
 
 export function WpmBar({ wpm, playerName, isCurrentUser, maxWpm = 150 }: WpmBarProps) {
-  const validWpm = Math.max(0, wpm); // Ensure wpm is non-negative
+  // Ensure wpm is a non-negative, finite number. Default to 0 if undefined, NaN, or Infinity.
+  const validWpm = Math.max(0, Number.isFinite(wpm) ? wpm : 0);
   const heightPercentage = Math.min(100, (validWpm / maxWpm) * 100);
 
   return (
@@ -20,11 +21,11 @@ export function WpmBar({ wpm, playerName, isCurrentUser, maxWpm = 150 }: WpmBarP
       <div className="flex-grow w-full bg-muted rounded-md overflow-hidden relative flex items-end justify-center">
         <div
           className={cn(
-            "w-full rounded-t-md transition-[height] duration-300 ease-out", // Use CSS transition for height
-            isCurrentUser ? "bg-primary" : "bg-accent/80" // Opponent bar color
+            "w-full rounded-t-md transition-[height] duration-300 ease-out", 
+            isCurrentUser ? "bg-primary" : "bg-accent/80" 
           )}
-          style={{ height: `${heightPercentage}%` }} // Apply height directly
-          aria-valuenow={validWpm}
+          style={{ height: `${heightPercentage}%` }} 
+          aria-valuenow={Math.round(validWpm)}
           aria-valuemin={0}
           aria-valuemax={maxWpm}
           role="progressbar"
