@@ -132,10 +132,8 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
         }
       }, 3000);
       return () => clearTimeout(countdownTimer);
-    } else if (room?.status === 'playing') {
-        if(isClientTimeUp) setIsClientTimeUp(false); // Reset if it was true from a previous game or state
     }
-  }, [room?.status, roomId, toast, isClientTimeUp]);
+  }, [room?.status, roomId, toast]);
 
   const handleTyping = async (e: ChangeEvent<HTMLTextAreaElement>) => {
     if (!room || room.status !== 'playing' || !user || !currentPlayer || !room.paragraphText || !room.startTime || isClientTimeUp) return;
@@ -176,14 +174,11 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
   };
   
   const handleClientTimeUp = useCallback(() => {
-    if (!isClientTimeUp) {
-      setIsClientTimeUp(true);
-    }
-  }, [isClientTimeUp, setIsClientTimeUp]);
+    setIsClientTimeUp(true);
+  }, []); // Empty dependency array makes this callback stable
 
    useEffect(() => {
     // This effect is for the server-authoritative game end.
-    // isClientTimeUp is handled by TimerDisplay's onTimeUp callback.
     if (!room || room.status !== 'playing' || !room.startTime) return;
 
     const checkGameEndAuthoritative = () => {
@@ -223,7 +218,6 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
       }
     };
     
-    // Run once immediately in case conditions are already met
     checkGameEndAuthoritative();
     const intervalId = setInterval(checkGameEndAuthoritative, 1000);
     return () => clearInterval(intervalId);
@@ -362,7 +356,6 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
           <CardContent>
             <p className="text-muted-foreground">Paragraph Length: {room.settings.paragraphLength} words</p>
             <p className="text-muted-foreground">Game Duration: {room.settings.gameDuration} seconds</p>
-             {/* Guest readiness already handled above */}
           </CardContent>
         </Card>
       )}
@@ -436,3 +429,4 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
     </div>
   );
 }
+
