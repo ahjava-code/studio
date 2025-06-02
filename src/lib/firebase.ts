@@ -1,3 +1,4 @@
+
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
@@ -10,6 +11,14 @@ const firebaseConfig = {
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
+
+if (!firebaseConfig.apiKey) {
+  console.error(
+    'Firebase API Key is missing. ' +
+    'Please ensure NEXT_PUBLIC_FIREBASE_API_KEY is correctly set in your .env.local file ' +
+    'and that you have restarted the Next.js development server.'
+  );
+}
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
