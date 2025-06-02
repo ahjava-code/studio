@@ -11,7 +11,7 @@ import type { Room, Player, GameSettings } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, AlertTriangle, Copy, Link as LinkIcon, Settings, Play, Users, LogOut, Share2, Trophy } from 'lucide-radix-ui/react-icons'; // Using Radix icons as per lucide-react example in prompt
+import { Loader2, AlertTriangle, Copy, Link as LinkIcon, Settings, Play, Users, LogOut, Share2, Trophy } from 'lucide-react';
 import { RoomInfo } from './RoomInfo';
 import { PlayerInfo } from './PlayerInfo';
 import { GameSettingsComponent } from './GameSettingsComponent';
