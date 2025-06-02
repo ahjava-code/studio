@@ -14,9 +14,18 @@ export function WpmBar({ wpm, playerName, isCurrentUser, maxWpm = 150 }: WpmBarP
   const heightPercentage = Math.min(100, (validWpm / maxWpm) * 100);
 
   return (
-    <div className={cn("flex flex-col items-center h-full w-16 md:w-24 p-2 rounded-lg shadow-md", isCurrentUser ? "bg-primary/10 border-primary border" : "bg-secondary")}>
-      <div className="text-sm font-medium mb-2 truncate w-full text-center" title={playerName}>
-        {playerName}
+    <div className={cn(
+      "flex flex-col items-center h-full w-16 md:w-24 p-2 rounded-lg shadow-md", 
+      isCurrentUser ? "bg-primary/10 border-primary border" : "bg-secondary"
+    )}>
+      <div 
+        className={cn(
+            "text-sm font-medium mb-2 truncate w-full text-center",
+            isCurrentUser ? "text-primary-foreground" : "text-secondary-foreground" // Ensure player name is visible
+        )} 
+        title={playerName}
+      >
+        {playerName || "Player"}
       </div>
       <div className="flex-grow w-full bg-muted rounded-md overflow-hidden relative flex items-end justify-center">
         <div
@@ -31,7 +40,8 @@ export function WpmBar({ wpm, playerName, isCurrentUser, maxWpm = 150 }: WpmBarP
           role="progressbar"
         >
         </div>
-         <span className="absolute bottom-1 text-xs font-semibold text-white mix-blend-difference pointer-events-none">
+         {/* Changed text color for better contrast against bg-muted if bar height is 0 */}
+         <span className="absolute bottom-1 text-xs font-semibold text-card-foreground pointer-events-none">
             {Math.round(validWpm)} WPM
           </span>
       </div>
