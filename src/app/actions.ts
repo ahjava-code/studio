@@ -1,3 +1,4 @@
+
 // src/app/actions.ts
 "use server";
 
@@ -6,7 +7,7 @@ import { z } from 'zod';
 import { db } from '@/lib/firebase';
 import { generateRoomId } from '@/lib/utils';
 import type { Room, Player, GameSettings } from '@/types';
-import { generateParagraphFlow } from '@/ai/flows/generateParagraph'; // Ensure this path is correct
+import { generateParagraph } from '@/ai/flows/generateParagraph'; // Updated import
 
 const ParagraphLengthSchema = z.enum(['50', '100', '200', '300']).transform(val => parseInt(val, 10) as 50 | 100 | 200 | 300);
 const GameDurationSchema = z.enum(['30', '60', '120']).transform(val => parseInt(val, 10) as 30 | 60 | 120);
@@ -50,7 +51,7 @@ export async function createRoomAction(input: z.infer<typeof CreateRoomInputSche
     settings: initialSettings,
     paragraphText: null,
     startTime: null,
-    createdAt: serverTimestamp() as any, // Cast to any for serverTimestamp placeholder
+    createdAt: serverTimestamp() as any, 
     player1: hostPlayer,
     player2: null,
   };
@@ -67,13 +68,14 @@ export async function createRoomAction(input: z.infer<typeof CreateRoomInputSche
 
 export async function fetchParagraphAction(length: 50 | 100 | 200 | 300): Promise<string> {
   try {
-    const validatedLength = ParagraphLengthSchema.parse(length.toString());
-    // The generateParagraphFlow expects a string enum, so convert back
-    const paragraph = await generateParagraphFlow.run({ length: validatedLength.toString() as '50' | '100' | '200' | '300' });
+    // Validate the input to this action
+    ParagraphLengthSchema.parse(length.toString()); 
+    
+    // Call the imported generateParagraph function, ensuring the input matches its schema
+    const paragraph = await generateParagraph({ length: length.toString() as '50' | '100' | '200' | '300' });
     return paragraph;
   } catch (error) {
     console.error("Error generating paragraph via AI flow:", error);
-    // Fallback paragraph
     return "The quick brown fox jumps over the lazy dog. A lazy fox is not a quick fox. Pack my box with five dozen liquor jugs. This is a fallback paragraph because the AI service might be unavailable or encountered an error.";
   }
 }
@@ -123,7 +125,7 @@ export async function joinRoomAction(input: z.infer<typeof JoinRoomInputSchema>)
     await setDoc(roomRef, { 
       guestId: guestId, 
       player2: guestPlayer,
-      status: 'ready' // Room is ready once guest joins
+      status: 'ready' 
     }, { merge: true });
     
     return { success: true };
