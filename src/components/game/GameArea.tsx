@@ -5,14 +5,13 @@ import { ParagraphDisplay } from './ParagraphDisplay';
 import { TypingInput } from './TypingInput';
 import { WpmBar } from './WpmBar';
 import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 
 interface GameAreaProps {
   paragraphText: string;
-  currentPlayer: Player;
-  opponentPlayer: Player | null;
+  currentPlayer: Player; // The user on this client
+  opponentPlayer: Player | null; // The other user
   onTyped: (e: ChangeEvent<HTMLTextAreaElement>) => void;
-  isMyTurn: boolean; // Could be useful for turn-based games, here always true while playing
+  isMyTurn: boolean;
   disabled: boolean;
 }
 
@@ -28,17 +27,17 @@ export function GameArea({
     <Card className="mt-4">
       <CardContent className="p-4">
         <div className="flex flex-col md:flex-row gap-4 items-stretch min-h-[300px] md:min-h-[400px]">
-          {/* Player 1 WPM Bar (Current User or Opponent) */}
-          <WpmBar 
-            wpm={currentPlayer.uid === (opponentPlayer?.isHost ? opponentPlayer.uid : currentPlayer.uid) ? currentPlayer.wpm : opponentPlayer?.wpm ?? 0}
-            playerName={currentPlayer.uid === (opponentPlayer?.isHost ? opponentPlayer.uid : currentPlayer.uid) ? currentPlayer.name : opponentPlayer?.name ?? "Player 1"}
-            isCurrentUser={currentPlayer.uid === (opponentPlayer?.isHost ? opponentPlayer.uid : currentPlayer.uid)}
+          {/* Current User's WPM Bar */}
+          <WpmBar
+            wpm={currentPlayer.wpm}
+            playerName={currentPlayer.name}
+            isCurrentUser={true}
           />
 
           {/* Typing Area */}
           <div className="flex-grow flex flex-col space-y-4 w-full md:w-3/5">
-            <ParagraphDisplay 
-              paragraphText={paragraphText} 
+            <ParagraphDisplay
+              paragraphText={paragraphText}
               typedText={currentPlayer.typedText}
               currentFocusIndex={currentPlayer.typedText.length}
             />
@@ -54,12 +53,26 @@ export function GameArea({
             </div>
           </div>
 
-          {/* Player 2 WPM Bar (Opponent or Current User) */}
-           <WpmBar 
-            wpm={opponentPlayer?.uid === (currentPlayer.isHost ? opponentPlayer.uid : currentPlayer.uid) ? opponentPlayer.wpm : currentPlayer?.wpm ?? 0}
-            playerName={opponentPlayer?.uid === (currentPlayer.isHost ? opponentPlayer.uid : currentPlayer.uid) ? opponentPlayer.name : currentPlayer?.name ?? "Player 2"}
-            isCurrentUser={opponentPlayer?.uid === (currentPlayer.isHost ? opponentPlayer.uid : currentPlayer.uid)}
-          />
+          {/* Opponent's WPM Bar */}
+          {opponentPlayer ? (
+            <WpmBar
+              wpm={opponentPlayer.wpm}
+              playerName={opponentPlayer.name}
+              isCurrentUser={false}
+            />
+          ) : (
+            // Placeholder for opponent if not connected
+            <div className="flex flex-col items-center h-full w-16 md:w-24 p-2 rounded-lg shadow-md bg-secondary">
+              <div className="text-sm font-medium mb-2 truncate w-full text-center" title="Opponent">
+                Opponent
+              </div>
+              <div className="flex-grow w-full bg-muted rounded-md overflow-hidden relative flex items-end justify-center">
+                 <span className="absolute bottom-1 text-xs font-semibold text-white mix-blend-difference pointer-events-none">
+                    0 WPM
+                  </span>
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
