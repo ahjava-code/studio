@@ -1,5 +1,3 @@
-
-// src/components/game/GameRoomClient.tsx
 "use client";
 
 import type { ChangeEvent} from 'react';
@@ -35,8 +33,7 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isHost, setIsHost] = useState(false);
-  const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
-  const [opponentPlayer, setOpponentPlayer] = useState<Player | null>(null);
+  const [livePlayer, setLivePlayer] = useState<Player | null>(null); // For local user's instant feedback
   const [isClientTimeUp, setIsClientTimeUp] = useState(false);
 
   useEffect(() => {
@@ -49,23 +46,24 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
         setRoom(roomData);
         setIsHost(roomData.hostId === user.uid);
         
-        if (roomData.hostId === user.uid) {
-          setCurrentPlayer(roomData.player1);
-          setOpponentPlayer(roomData.player2);
-        } else if (roomData.guestId === user.uid) {
-          setCurrentPlayer(roomData.player2);
-          setOpponentPlayer(roomData.player1);
-        } else if (roomData.status === 'waiting' && !roomData.guestId) {
-          // User might be the host who created but navigated away and back
-           // Or, a new user trying to join when only host is set
-        } else {
-           // User is not part of this room, but room exists. Maybe redirect or show error.
-           // For now, if user is not host or guest and room is not 'waiting', it's an issue.
-          if (roomData.status !== 'waiting') {
+        const currentPlayerFromRoom = roomData.hostId === user.uid
+            ? roomData.player1
+            : roomData.guestId === user.uid
+            ? roomData.player2
+            : null;
+
+        // Sync local state only when not actively playing or if the player changes.
+        // This prevents Firestore's slightly delayed data from overwriting instant local updates.
+        if (roomData.status !== 'playing' || livePlayer?.uid !== currentPlayerFromRoom?.uid) {
+            setLivePlayer(currentPlayerFromRoom);
+        }
+
+        // Redirect if user is not a participant and room is not joinable
+        if (!currentPlayerFromRoom && roomData.status !== 'waiting' && (roomData.hostId !== user.uid && roomData.guestId !== user.uid)) {
             toast({ title: "Access Denied", description: "You are not a participant in this room.", variant: "destructive"});
             router.push('/');
-          }
         }
+        
         setLoading(false);
         setError(null);
       } else {
@@ -82,7 +80,39 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
     });
 
     return () => unsubscribe();
-  }, [roomId, user, router, toast]);
+  }, [roomId, user, router, toast, livePlayer?.uid]);
+
+  // Effect for high-frequency WPM updates for the local player
+  useEffect(() => {
+    if (room?.status !== 'playing' || !room.startTime) {
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      setLivePlayer(currentLivePlayer => {
+        if (!currentLivePlayer || !room.startTime) {
+          return currentLivePlayer;
+        }
+        
+        const startTime = room.startTime as Timestamp;
+        const timeNow = Timestamp.now();
+        // Use high-precision time difference
+        const elapsedSeconds = Math.max(0.1, timeNow.seconds - startTime.seconds + (timeNow.nanoseconds - startTime.nanoseconds) / 1e9);
+
+        const correctChars = currentLivePlayer.typedText.length - currentLivePlayer.errors;
+        const newWpm = calculateWpm(correctChars, elapsedSeconds);
+
+        // Only trigger a re-render if the rounded WPM value changes
+        if (Math.round(newWpm) !== Math.round(currentLivePlayer.wpm)) {
+          return { ...currentLivePlayer, wpm: newWpm };
+        }
+        return currentLivePlayer;
+      });
+    }, 20); // Update WPM every 20ms for a "live" feel
+
+    return () => clearInterval(intervalId);
+  }, [room?.status, room?.startTime]);
+
 
   const handleSettingsChange = async (newSettings: Partial<GameSettings>) => {
     if (!room || !isHost) return;
@@ -137,7 +167,7 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
 
 
   const handleTyping = async (e: ChangeEvent<HTMLTextAreaElement>) => {
-    if (!room || room.status !== 'playing' || !user || !currentPlayer || !room.paragraphText || !room.startTime || isClientTimeUp) return;
+    if (!room || room.status !== 'playing' || !user || !livePlayer || !room.paragraphText || !room.startTime || isClientTimeUp) return;
 
     const typedText = e.target.value;
     let errors = 0;
@@ -151,16 +181,24 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
     
     const correctChars = typedText.length - errors;
     const progress = room.paragraphText ? Math.round((Math.min(typedText.length, room.paragraphText.length) / room.paragraphText.length) * 100) : 0;
-    
-    const timeNow = Timestamp.now();
-    const startTimeNanos = BigInt((room.startTime as Timestamp).seconds) * BigInt(1_000_000_000) + BigInt((room.startTime as Timestamp).nanoseconds);
-    const currentTimeNanos = BigInt(timeNow.seconds) * BigInt(1_000_000_000) + BigInt(timeNow.nanoseconds);
-    const elapsedNanos = currentTimeNanos - startTimeNanos;
-    const elapsedSeconds = Number(elapsedNanos) / 1_000_000_000;
-
-    const wpm = calculateWpm(correctChars, elapsedSeconds);
     const accuracy = calculateAccuracy(typedText.length, errors);
+    
+    const startTime = room.startTime as Timestamp;
+    const timeNow = Timestamp.now();
+    const elapsedSeconds = Math.max(0.1, timeNow.seconds - startTime.seconds + (timeNow.nanoseconds - startTime.nanoseconds) / 1e9);
+    const wpm = calculateWpm(correctChars, elapsedSeconds);
 
+    // Update local state for instant feedback
+    setLivePlayer(prev => prev ? {
+        ...prev,
+        typedText,
+        wpm,
+        accuracy,
+        errors,
+        progress,
+    } : null);
+
+    // Update Firestore for the opponent
     const playerField = isHost ? 'player1' : 'player2';
     const updateData = {
       [`${playerField}.typedText`]: typedText,
@@ -188,7 +226,6 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
 
     const checkGameEndAuthoritative = () => {
       const now = Timestamp.now();
-      // For game end check, integer seconds are sufficient against gameDuration
       const elapsedSecondsServerCheck = now.seconds - (room.startTime as Timestamp).seconds;
       
       const gameShouldEndByTime = elapsedSecondsServerCheck >= room.settings.gameDuration;
@@ -205,7 +242,6 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
         const roomRef = doc(db, 'rooms', roomId);
         let winner: Room['winner'] = null;
         if (room.player1 && room.player2) {
-            // Score considers WPM, accuracy, and progress as a tie-breaker
             const p1Score = room.player1.wpm * (room.player1.accuracy / 100) + room.player1.progress * 0.01; 
             const p2Score = room.player2.wpm * (room.player2.accuracy / 100) + room.player2.progress * 0.01;
             if (p1Score > p2Score) winner = 'player1';
@@ -215,9 +251,9 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
             winner = 'player1';
         } else if (room.player2 && !room.player1 && p2Finished) { 
             winner = 'player2';
-        } else if (room.player1 && !room.player2 && gameShouldEndByTime) { // P1 exists, P2 doesn't, time up
+        } else if (room.player1 && !room.player2 && gameShouldEndByTime) {
             winner = 'player1';
-        } else if (room.player2 && !room.player1 && gameShouldEndByTime) { // P2 exists, P1 doesn't, time up
+        } else if (room.player2 && !room.player1 && gameShouldEndByTime) {
             winner = 'player2';
         }
 
@@ -226,8 +262,8 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
       }
     };
     
-    checkGameEndAuthoritative(); // Check once immediately
-    const intervalId = setInterval(checkGameEndAuthoritative, 1000); // Then check every second
+    checkGameEndAuthoritative();
+    const intervalId = setInterval(checkGameEndAuthoritative, 1000);
     return () => clearInterval(intervalId);
 
   }, [room?.status, room?.startTime, room?.settings?.gameDuration, room?.player1, room?.player2, room?.paragraphText, roomId]);
@@ -238,33 +274,29 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
     const roomRef = doc(db, 'rooms', roomId);
     try {
       if (isHost) {
-        // If guest exists, promote guest to host
         if (room.player2) {
              await updateDoc(roomRef, { 
                hostId: room.player2.uid, 
-               player1: { ...room.player2, isHost: true, isReady: true }, // Guest becomes new player1 (host)
+               player1: { ...room.player2, isHost: true, isReady: true },
                guestId: null,
                player2: null,
-               status: 'waiting' // Reset status for new host
+               status: 'waiting'
               });
         } else {
-            // No guest, just clear host details or mark room as empty/deletable
             await updateDoc(roomRef, { 
                 player1: null, 
-                hostId: '', // Or a specific marker for an empty room ready for deletion
-                status: 'waiting', // Or 'empty'
+                hostId: '', 
+                status: 'waiting', 
                 paragraphText: null, 
                 startTime: null, 
                 winner: null 
             }); 
         }
       } else { 
-        // Guest is leaving
         await updateDoc(roomRef, { 
             guestId: null, 
             player2: null, 
-            status: (room.player1 ? 'waiting' : 'empty'), // If host still there, waiting, else empty
-            // Keep paragraphText if host is still there, otherwise clear it
+            status: (room.player1 ? 'waiting' : 'empty'),
             paragraphText: (room.player1 ? room.paragraphText : null), 
             winner: null 
         });
@@ -295,7 +327,7 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
         updates['player2.accuracy'] = 100;
         updates['player2.errors'] = 0;
         updates['player2.progress'] = 0;
-        updates['player2.isReady'] = false; // Guest needs to ready up again
+        updates['player2.isReady'] = false;
       }
       await updateDoc(roomRef, updates);
     } catch (e) {
@@ -322,9 +354,6 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
     return <div className="text-center py-10"><p>Room data or user not available.</p></div>;
   }
   
-  // This check needs to be robust. If the user is neither host nor guest,
-  // and the room is not in 'waiting' (which implies a spot might be open),
-  // then they shouldn't be here.
   const isParticipant = isHost || (room.guestId && user.uid === room.guestId);
   if (!isParticipant && room.status !== 'waiting') {
      return (
@@ -335,7 +364,8 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
         </div>
      );
   }
-
+  
+  const opponentPlayer = isHost ? room.player2 : room.player1;
   const canStartGame = isHost && room.status === 'ready' && room.player1?.isReady && room.player2?.isReady;
 
   return (
@@ -387,7 +417,7 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
         <GameSettingsComponent settings={room.settings} onSettingsChange={handleSettingsChange} disabled={!isHost || room.status !== 'ready'} />
       )}
       
-      {room.status === 'ready' && !isHost && ( // Guest sees non-editable settings
+      {room.status === 'ready' && !isHost && ( 
          <Card>
           <CardHeader className="pt-4 pb-2"><CardTitle className="text-xl text-center">Game Details</CardTitle></CardHeader>
           <CardContent className="text-center pt-2 pb-4">
@@ -408,7 +438,7 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
           {isHost && (!room.player2 || !room.player1?.isReady || !room.player2?.isReady) && 
             <p className="text-sm text-muted-foreground mt-2">
               { !room.player2 && "Waiting for Player 2 to join."}
-              { room.player2 && !room.player1?.isReady && "Host is not ready."} {/* Should not happen if host.isReady is true by default */}
+              { room.player2 && !room.player1?.isReady && "Host is not ready."}
               { room.player2 && room.player1?.isReady && !room.player2?.isReady && "Waiting for Player 2 to be ready."}
             </p>
           }
@@ -417,7 +447,7 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
 
       {room.status === 'countdown' && <CountdownDisplay />}
       
-      {room.status === 'playing' && room.paragraphText && currentPlayer && room.startTime && (
+      {room.status === 'playing' && room.paragraphText && livePlayer && room.startTime && (
         <>
           <TimerDisplay 
             startTime={room.startTime} 
@@ -426,7 +456,7 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
           />
           <GameArea
             paragraphText={room.paragraphText}
-            currentPlayer={currentPlayer}
+            currentPlayer={livePlayer}
             opponentPlayer={opponentPlayer}
             onTyped={handleTyping}
             isMyTurn={true} 
@@ -466,4 +496,3 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
     </div>
   );
 }
-
