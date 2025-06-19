@@ -33,8 +33,12 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isHost, setIsHost] = useState(false);
-  const [livePlayer, setLivePlayer] = useState<Player | null>(null); // For local user's instant feedback
+  const [livePlayer, setLivePlayer] = useState<Player | null>(null);
   const [isClientTimeUp, setIsClientTimeUp] = useState(false);
+
+  // --- START FIX: Decoupled state for opponent's WPM ---
+  const [displayOpponentWpm, setDisplayOpponentWpm] = useState(0);
+  // --- END FIX ---
 
   useEffect(() => {
     if (!user) return;
@@ -43,22 +47,21 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
     const unsubscribe = onSnapshot(roomRef, (docSnap) => {
       if (docSnap.exists()) {
         const roomData = docSnap.data() as Room;
-        setRoom(roomData);
+        setRoom(roomData); // This is our source of truth
         setIsHost(roomData.hostId === user.uid);
         
-        const currentPlayerFromRoom = roomData.hostId === user.uid
-            ? roomData.player1
-            : roomData.guestId === user.uid
-            ? roomData.player2
-            : null;
+        const currentPlayerFromRoom = roomData.hostId === user.uid ? roomData.player1 : roomData.guestId === user.uid ? roomData.player2 : null;
 
-        // Sync local state only when not actively playing or if the player changes.
-        // This prevents Firestore's slightly delayed data from overwriting instant local updates.
+        // Sync local player state only when not actively playing or if the player changes.
         if (roomData.status !== 'playing' || livePlayer?.uid !== currentPlayerFromRoom?.uid) {
             setLivePlayer(currentPlayerFromRoom);
         }
+        
+        // Reset opponent WPM when game is not playing
+        if (roomData.status !== 'playing') {
+          setDisplayOpponentWpm(0);
+        }
 
-        // Redirect if user is not a participant and room is not joinable
         if (!currentPlayerFromRoom && roomData.status !== 'waiting' && (roomData.hostId !== user.uid && roomData.guestId !== user.uid)) {
             toast({ title: "Access Denied", description: "You are not a participant in this room.", variant: "destructive"});
             router.push('/');
@@ -82,36 +85,45 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
     return () => unsubscribe();
   }, [roomId, user, router, toast, livePlayer?.uid]);
 
-  // Effect for high-frequency WPM updates for the local player
+  // Effect for high-frequency WPM updates for BOTH players
   useEffect(() => {
     if (room?.status !== 'playing' || !room.startTime) {
       return;
     }
 
     const intervalId = setInterval(() => {
-      setLivePlayer(currentLivePlayer => {
-        if (!currentLivePlayer || !room.startTime) {
-          return currentLivePlayer;
-        }
-        
-        const startTime = room.startTime as Timestamp;
-        const timeNow = Timestamp.now();
-        // Use high-precision time difference
-        const elapsedSeconds = Math.max(0.1, timeNow.seconds - startTime.seconds + (timeNow.nanoseconds - startTime.nanoseconds) / 1e9);
+      const startTime = room.startTime as Timestamp;
+      const timeNow = Timestamp.now();
+      const elapsedSeconds = Math.max(0.1, timeNow.seconds - startTime.seconds + (timeNow.nanoseconds - startTime.nanoseconds) / 1e9);
 
-        const correctChars = currentLivePlayer.typedText.length - currentLivePlayer.errors;
+      // --- START FIX: Revised interval logic ---
+
+      // Update local player's WPM (this part was already working well)
+      setLivePlayer(current => {
+        if (!current) return null;
+        const correctChars = current.typedText.length - current.errors;
         const newWpm = calculateWpm(correctChars, elapsedSeconds);
-
-        // Only trigger a re-render if the rounded WPM value changes
-        if (Math.round(newWpm) !== Math.round(currentLivePlayer.wpm)) {
-          return { ...currentLivePlayer, wpm: newWpm };
+        // Only update if WPM value changes to avoid unnecessary re-renders
+        if (Math.round(newWpm) !== Math.round(current.wpm)) {
+          return { ...current, wpm: newWpm };
         }
-        return currentLivePlayer;
+        return current;
       });
+
+      // Update opponent's display WPM
+      const opponentFromRoom = isHost ? room.player2 : room.player1;
+      if (opponentFromRoom) {
+        const correctChars = opponentFromRoom.typedText.length - opponentFromRoom.errors;
+        const newWpm = calculateWpm(correctChars, elapsedSeconds);
+        setDisplayOpponentWpm(newWpm);
+      }
+      
+      // --- END FIX ---
+
     }, 20); // Update WPM every 20ms for a "live" feel
 
     return () => clearInterval(intervalId);
-  }, [room?.status, room?.startTime]);
+  }, [room, isHost]); // Dependency array now correctly tracks room changes
 
 
   const handleSettingsChange = async (newSettings: Partial<GameSettings>) => {
@@ -221,7 +233,6 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
   }, []);
 
    useEffect(() => {
-    // This effect is for the server-authoritative game end.
     if (!room || room.status !== 'playing' || !room.startTime) return;
 
     const checkGameEndAuthoritative = () => {
@@ -256,7 +267,6 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
         } else if (room.player2 && !room.player1 && gameShouldEndByTime) {
             winner = 'player2';
         }
-
 
         updateDoc(roomRef, { status: 'finished', winner: winner }).catch(e => console.error("Error ending game:", e));
       }
@@ -365,8 +375,18 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
      );
   }
   
-  const opponentPlayer = isHost ? room.player2 : room.player1;
   const canStartGame = isHost && room.status === 'ready' && room.player1?.isReady && room.player2?.isReady;
+  
+  // --- START FIX: Create the display opponent object on the fly ---
+  const opponentFromRoom = isHost ? room.player2 : room.player1;
+  const displayOpponent = opponentFromRoom
+    ? {
+        ...opponentFromRoom,
+        wpm: displayOpponentWpm, // Override WPM with our live calculated value
+      }
+    : null;
+  // --- END FIX ---
+
 
   return (
     <div className="space-y-6">
@@ -377,6 +397,8 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
 
       <PlayerInfo player1={room.player1} player2={room.player2} currentUserId={user.uid} />
 
+      {/* ... rest of the JSX is the same ... */}
+      
       {room.status === 'waiting' && (
         <Card className="text-center">
           <CardHeader className="pt-4 pb-2"><CardTitle>Waiting for Player</CardTitle></CardHeader>
@@ -457,7 +479,7 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
           <GameArea
             paragraphText={room.paragraphText}
             currentPlayer={livePlayer}
-            opponentPlayer={opponentPlayer}
+            opponentPlayer={displayOpponent} 
             onTyped={handleTyping}
             isMyTurn={true} 
             disabled={isClientTimeUp} 
