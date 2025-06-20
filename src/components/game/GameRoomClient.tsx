@@ -377,7 +377,6 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
   
   const canStartGame = isHost && room.status === 'ready' && room.player1?.isReady && room.player2?.isReady;
   
-  // --- START FIX: Create the display opponent object on the fly ---
   const opponentFromRoom = isHost ? room.player2 : room.player1;
   const displayOpponent = opponentFromRoom
     ? {
@@ -385,92 +384,99 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
         wpm: displayOpponentWpm, // Override WPM with our live calculated value
       }
     : null;
-  // --- END FIX ---
-
 
   return (
     <div className="space-y-6">
-      <CardHeader className="text-center pb-2">
-        <CardTitle className="text-3xl font-headline">Room: {roomId}</CardTitle>
-        <RoomInfo roomId={roomId} />
-      </CardHeader>
-
-      <PlayerInfo player1={room.player1} player2={room.player2} currentUserId={user.uid} />
-
-      {/* ... rest of the JSX is the same ... */}
-      
-      {room.status === 'waiting' && (
-        <Card className="text-center">
-          <CardHeader className="pt-4 pb-2"><CardTitle>Waiting for Player</CardTitle></CardHeader>
-          <CardContent className="pt-2 pb-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-            <p className="mt-2 text-muted-foreground">
-              {isHost ? "Share the room ID or link with another player to join." : "Waiting for the host..."}
-            </p>
-            {!room.player1 && isHost && <p className="text-sm text-destructive mt-2">Error: Host data missing. Try leaving and rejoining.</p>}
-          </CardContent>
-        </Card>
-      )}
-      
-      {room.status === 'ready' && !isHost && room.player2 && !room.player2.isReady && (
-        <div className="text-center">
-          <Button onClick={async () => {
-            if (user && room.player2) {
-              const roomRef = doc(db, 'rooms', roomId);
-              await updateDoc(roomRef, {'player2.isReady': true });
-              toast({title: "You are Ready!", description: "Waiting for host to start."});
-            }
-          }}>
-            Ready Up!
-          </Button>
-        </div>
-      )}
-      {room.status === 'ready' && !isHost && room.player2 && room.player2.isReady && (
-         <Card className="text-center">
-            <CardContent className="pt-6">
-                <p className="font-semibold text-primary">You are Ready!</p>
-                <p className="text-muted-foreground">Waiting for host to start the game...</p>
-            </CardContent>
-         </Card>
-      )}
-
-
-      {room.status === 'ready' && isHost && (
-        <GameSettingsComponent settings={room.settings} onSettingsChange={handleSettingsChange} disabled={!isHost || room.status !== 'ready'} />
-      )}
-      
-      {room.status === 'ready' && !isHost && ( 
-         <Card>
-          <CardHeader className="pt-4 pb-2"><CardTitle className="text-xl text-center">Game Details</CardTitle></CardHeader>
-          <CardContent className="text-center pt-2 pb-4">
-            <p className="text-muted-foreground">Paragraph Length: {room.settings.paragraphLength} words</p>
-            <p className="text-muted-foreground">Game Duration: {room.settings.gameDuration} seconds</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {room.status === 'ready' && (
-        <div className="text-center">
-          {isHost && (
-            <Button onClick={handleStartGame} disabled={!canStartGame || loading} size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-              {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Play className="mr-2 h-5 w-5" />}
-              Start Game
-            </Button>
-          )}
-          {isHost && (!room.player2 || !room.player1?.isReady || !room.player2?.isReady) && 
-            <p className="text-sm text-muted-foreground mt-2">
-              { !room.player2 && "Waiting for Player 2 to join."}
-              { room.player2 && !room.player1?.isReady && "Host is not ready."}
-              { room.player2 && room.player1?.isReady && !room.player2?.isReady && "Waiting for Player 2 to be ready."}
-            </p>
-          }
-        </div>
-      )}
-
-      {room.status === 'countdown' && <CountdownDisplay />}
-      
-      {room.status === 'playing' && room.paragraphText && livePlayer && room.startTime && (
+      {/* --- LOBBY/PRE-GAME UI (Hidden during 'playing') --- */}
+      {room.status !== 'playing' && (
         <>
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-3xl font-headline">Room: {roomId}</CardTitle>
+            <RoomInfo roomId={roomId} />
+          </CardHeader>
+
+          <PlayerInfo player1={room.player1} player2={room.player2} currentUserId={user.uid} />
+
+          {room.status === 'waiting' && (
+            <Card className="text-center">
+              <CardHeader className="pt-4 pb-2"><CardTitle>Waiting for Player</CardTitle></CardHeader>
+              <CardContent className="pt-2 pb-4">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                <p className="mt-2 text-muted-foreground">
+                  {isHost ? "Share the room ID or link with another player to join." : "Waiting for the host..."}
+                </p>
+                {!room.player1 && isHost && <p className="text-sm text-destructive mt-2">Error: Host data missing. Try leaving and rejoining.</p>}
+              </CardContent>
+            </Card>
+          )}
+          
+          {room.status === 'ready' && !isHost && room.player2 && !room.player2.isReady && (
+            <div className="text-center">
+              <Button onClick={async () => {
+                if (user && room.player2) {
+                  const roomRef = doc(db, 'rooms', roomId);
+                  await updateDoc(roomRef, {'player2.isReady': true });
+                  toast({title: "You are Ready!", description: "Waiting for host to start."});
+                }
+              }}>
+                Ready Up!
+              </Button>
+            </div>
+          )}
+          {room.status === 'ready' && !isHost && room.player2 && room.player2.isReady && (
+             <Card className="text-center">
+                <CardContent className="pt-6">
+                    <p className="font-semibold text-primary">You are Ready!</p>
+                    <p className="text-muted-foreground">Waiting for host to start the game...</p>
+                </CardContent>
+             </Card>
+          )}
+
+          {room.status === 'ready' && isHost && (
+            <GameSettingsComponent settings={room.settings} onSettingsChange={handleSettingsChange} disabled={!isHost || room.status !== 'ready'} />
+          )}
+          
+          {room.status === 'ready' && !isHost && ( 
+             <Card>
+              <CardHeader className="pt-4 pb-2"><CardTitle className="text-xl text-center">Game Details</CardTitle></CardHeader>
+              <CardContent className="text-center pt-2 pb-4">
+                <p className="text-muted-foreground">Paragraph Length: {room.settings.paragraphLength} words</p>
+                <p className="text-muted-foreground">Game Duration: {room.settings.gameDuration} seconds</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {room.status === 'ready' && (
+            <div className="text-center">
+              {isHost && (
+                <Button onClick={handleStartGame} disabled={!canStartGame || loading} size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                  {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Play className="mr-2 h-5 w-5" />}
+                  Start Game
+                </Button>
+              )}
+              {isHost && (!room.player2 || !room.player1?.isReady || !room.player2?.isReady) && 
+                <p className="text-sm text-muted-foreground mt-2">
+                  { !room.player2 && "Waiting for Player 2 to join."}
+                  { room.player2 && !room.player1?.isReady && "Host is not ready."}
+                  { room.player2 && room.player1?.isReady && !room.player2?.isReady && "Waiting for Player 2 to be ready."}
+                </p>
+              }
+            </div>
+          )}
+
+          {room.status === 'countdown' && <CountdownDisplay />}
+          
+          {room.status === 'finished' && user && (
+            <GameResults room={room} currentUserId={user.uid} />
+          )}
+        </>
+      )}
+      {/* --- END LOBBY/PRE-GAME UI --- */}
+
+
+      {/* --- GAME PLAY SECTION (Always visible when 'playing', else conditional) --- */}
+      {room.status === 'playing' && room.paragraphText && livePlayer && room.startTime && (
+        <div className="flex flex-col items-center justify-center w-full max-w-4xl mx-auto">
           <TimerDisplay 
             startTime={room.startTime} 
             duration={room.settings.gameDuration}
@@ -484,37 +490,42 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
             isMyTurn={true} 
             disabled={isClientTimeUp} 
           />
-        </>
+        </div>
       )}
+      {/* --- END GAME PLAY SECTION --- */}
       
-      {room.status === 'finished' && user && (
-        <GameResults room={room} currentUserId={user.uid} />
-      )}
-
+      {/* --- FOOTER BUTTONS (Always visible) --- */}
       <CardFooter className="flex flex-col sm:flex-row justify-between items-center mt-8 gap-4">
+        {/* Leave Room button is now outside the conditional rendering */}
         <Button variant="outline" onClick={handleLeaveRoom} className="w-full sm:w-auto">
           <LogOut className="mr-2 h-4 w-4" /> Leave Room
         </Button>
-        {isHost && room.status === 'finished' && (
-          <Button onClick={handlePlayAgain} className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
-            <Play className="mr-2 h-4 w-4" /> Play Again
-          </Button>
+        
+        {/* Play Again buttons, also conditional based on game status */}
+        {room.status === 'finished' && (
+          isHost ? (
+            <Button onClick={handlePlayAgain} className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
+              <Play className="mr-2 h-4 w-4" /> Play Again
+            </Button>
+          ) : (
+            room.player1 && room.player2 && !room.player2.isReady && (
+              <Button onClick={async () => {
+                if (user && room.player2) {
+                  const roomRef = doc(db, 'rooms', roomId);
+                  await updateDoc(roomRef, {'player2.isReady': true });
+                  toast({title: "Ready for next game!", description: "Waiting for host to start."});
+                }
+              }} className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
+                <Play className="mr-2 h-4 w-4" /> Play Again (Ready Up)
+              </Button>
+            )
+          )
         )}
-        {!isHost && room.status === 'finished' && room.player1 && room.player2 && !room.player2.isReady && (
-           <Button onClick={async () => {
-             if (user && room.player2) {
-                const roomRef = doc(db, 'rooms', roomId);
-                await updateDoc(roomRef, {'player2.isReady': true });
-                toast({title: "Ready for next game!", description: "Waiting for host to start."});
-             }
-           }} className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
-            <Play className="mr-2 h-4 w-4" /> Play Again (Ready Up)
-          </Button>
-        )}
-         {!isHost && room.status === 'finished' && room.player1 && room.player2 && room.player2.isReady && (
+        {!isHost && room.status === 'finished' && room.player1 && room.player2 && room.player2.isReady && (
              <p className="text-sm text-primary">Waiting for host to start next game...</p>
-         )}
+        )}
       </CardFooter>
+      {/* --- END FOOTER BUTTONS --- */}
     </div>
   );
 }
