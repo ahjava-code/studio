@@ -392,7 +392,7 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
         <>
           <CardHeader className="text-center pb-2">
             <CardTitle className="text-3xl font-headline">Room: {roomId}</CardTitle>
-            <RoomInfo roomId={roomId} />
+            { room.player1 && room.player2 ?(<div></div>):(<RoomInfo roomId={roomId} />)}
           </CardHeader>
 
           <PlayerInfo player1={room.player1} player2={room.player2} currentUserId={user.uid} />
