@@ -24,7 +24,7 @@ export function ParagraphDisplay({ paragraphText, typedText, currentFocusIndex }
 
   return (
     <ScrollArea className="h-40 md:h-48 w-full rounded-md border p-4 bg-card shadow">
-      <p className="text-lg md:text-xl leading-relaxed whitespace-pre-wrap font-serif">
+      <p className="text-lg md:text-xl leading-relaxed whitespace-pre-wrap font-serif select-none">
         {paragraphText.split('').map((char, index) => (
           <span key={index} className={getCharClass(index)}>
             {char === ' ' && typedText[index] !== paragraphText[index] && typedText.length > index ? '·' : char}
