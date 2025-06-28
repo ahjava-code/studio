@@ -8,117 +8,125 @@ import { cn } from '@/lib/utils';
 interface GameResultsProps {
   room: Room;
   currentUserId: string;
-  compact?: boolean;
+  compact?: boolean; // Keep compact for potential future use, but the main design will be more compact.
 }
 
-const PlayerResultCard = ({ 
-  player, 
-  isWinner, 
+const PlayerResultCard = ({
+  player,
+  isWinner,
   isCurrentUser,
-  compact
-}: { 
-  player: Player, 
-  isWinner: boolean, 
+}: {
+  player: Player,
+  isWinner: boolean,
   isCurrentUser: boolean,
-  compact?: boolean
 }) => {
   return (
     <motion.div
-      initial={{ scale: 0.9, opacity: 0, y: 20 }}
+      initial={{ scale: 0.95, opacity: 0, y: 15 }}
       animate={{ scale: 1, opacity: 1, y: 0 }}
-      transition={{ 
+      transition={{
         duration: 0.5,
-        delay: isWinner ? 0.3 : 0.1
+        ease: "easeOut",
+        delay: isWinner ? 0.2 : 0.05
       }}
       className={cn(
-        "relative overflow-hidden rounded-xl p-0.5",
-        isWinner ? "bg-gradient-to-r from-yellow-400 via-amber-400 to-orange-400 shadow-xl" : "bg-muted/50"
+        "relative rounded-xl p-0.5",
+        isWinner
+          ? "bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-500 shadow-lg shadow-yellow-500/30"
+          : "bg-gradient-to-br from-muted/30 to-muted/50"
       )}
     >
       <Card className={cn(
-        "h-full relative overflow-hidden",
-        isWinner ? "bg-gradient-to-br from-background to-muted/50" : "bg-background",
-        isCurrentUser && "border-2 border-primary"
+        "relative overflow-hidden",
+        isWinner
+          ? "bg-gradient-to-br from-background/95 to-background/80 border-transparent"
+          : "bg-background border-muted/30",
+        isCurrentUser && "border-2 border-primary shadow-sm"
       )}>
         {isWinner && (
-          <div className="absolute top-0 right-0 p-2">
+          <div className="absolute top-2 right-2 p-1.5">
             <div className="relative">
-              <Award className="h-10 w-10 text-yellow-500" />
-              <Star className="absolute -top-1 -right-1 h-4 w-4 text-yellow-500 fill-yellow-500 animate-pulse" />
+              <Award className="h-7 w-7 text-yellow-500" />
+              <motion.div
+                animate={{ scale: [1, 1.15, 1] }}
+                transition={{ duration: 0.9, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+                className="absolute -top-1 -right-1"
+              >
+                <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+              </motion.div>
             </div>
           </div>
         )}
-        
-        <CardHeader className={cn("pb-2", compact ? "p-3" : "p-4")}>
-          <div className="flex items-center justify-center gap-3">
+
+        <CardHeader className="pb-1.5 px-3.5 py-2.5">
+          <div className="flex items-center justify-center gap-2.5">
             <div className={cn(
-              "relative rounded-full p-1",
-              isWinner ? "bg-gradient-to-r from-yellow-500 to-amber-500" : "bg-muted"
+              "relative rounded-full p-0.5",
+              isWinner ? "bg-gradient-to-br from-yellow-500 to-amber-500" : "bg-muted"
             )}>
               <UserCircle2 className={cn(
                 isWinner ? "text-background" : "text-foreground",
-                compact ? "h-8 w-8" : "h-10 w-10"
+                "h-7 w-7"
               )} />
             </div>
             <CardTitle className={cn(
-              "font-bold truncate max-w-[120px]",
-              compact ? "text-lg" : "text-xl",
-              isWinner ? "text-amber-600" : "text-foreground"
+              "font-bold truncate max-w-[100px]",
+              "text-lg",
+              isWinner ? "text-amber-600 dark:text-amber-400" : "text-foreground dark:text-primary-foreground"
             )}>
-              {player.name} {isCurrentUser && "(You)"}
+              {player.name} {isCurrentUser && <span className="text-xs text-muted-foreground">(You)</span>}
             </CardTitle>
           </div>
         </CardHeader>
-        
-        <CardContent className={cn("space-y-2", compact ? "p-3 pt-0" : "p-4 pt-0")}>
-          {isWinner && !compact && (
-            <div className="mb-3 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 py-2 rounded-lg border border-amber-400/30">
-              <div className="flex items-center justify-center gap-2 text-amber-600 font-bold">
-                <Trophy className="h-5 w-5" />
-                <span>WINNER</span>
+
+        <CardContent className="space-y-2 px-3.5 py-2.5">
+          {isWinner && (
+            <div className="mb-3 bg-gradient-to-br from-yellow-500/15 via-amber-500/15 to-orange-500/15 py-1.5 rounded-lg border border-yellow-500/20">
+              <div className="flex items-center justify-center gap-1.5 text-amber-600 dark:text-amber-400 font-semibold">
+                <Trophy className="h-4 w-4" />
+                <span>Winner</span>
               </div>
             </div>
           )}
-          
-          <div className={cn(
-            "flex items-center justify-center gap-1",
-            compact ? "text-lg" : "text-2xl"
-          )}>
-            <Zap className={cn(
-              "text-yellow-500",
-              compact ? "h-4 w-4" : "h-5 w-5"
-            )} />
-            <span className="font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+
+          <div className="flex items-center justify-center gap-1">
+            <motion.div
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 1, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+            >
+              <Zap className="text-yellow-500 h-5 w-5" />
+            </motion.div>
+            <span className="font-extrabold text-2xl bg-gradient-to-br from-primary via-purple-600 to-yellow-500 bg-clip-text text-transparent">
               {player.wpm.toFixed(1)}
             </span>
-            <span className="text-muted-foreground text-sm">WPM</span>
+            <span className="text-muted-foreground text-xs -mt-1.5">WPM</span>
           </div>
-          
-          <div className="grid grid-cols-2 gap-2 mt-3">
-            <div className="flex flex-col items-center bg-muted/30 py-2 rounded-lg">
-              <span className="text-sm text-muted-foreground">Accuracy</span>
-              <div className="flex items-center gap-1 font-semibold text-green-600">
-                <CheckCircle className="h-4 w-4" />
-                <span>{player.accuracy.toFixed(1)}%</span>
+
+          <div className="grid grid-cols-2 gap-2.5 mt-3">
+            <div className="flex flex-col items-center bg-muted/15 py-1.5 rounded-md border border-muted/25">
+              <span className="text-xs text-muted-foreground">Accuracy</span>
+              <div className="flex items-center gap-0.5 font-bold text-green-600 dark:text-green-400">
+                <CheckCircle className="h-3 w-3" />
+                <span className="text-base">{player.accuracy.toFixed(1)}%</span>
               </div>
             </div>
-            
-            <div className="flex flex-col items-center bg-muted/30 py-2 rounded-lg">
-              <span className="text-sm text-muted-foreground">Progress</span>
-              <span className="font-semibold">{player.progress.toFixed(0)}%</span>
+
+            <div className="flex flex-col items-center bg-muted/15 py-1.5 rounded-md border border-muted/25">
+              <span className="text-xs text-muted-foreground">Progress</span>
+              <span className="font-bold text-base">{player.progress.toFixed(0)}%</span>
             </div>
-            
-            <div className="flex flex-col items-center bg-muted/30 py-2 rounded-lg">
-              <span className="text-sm text-muted-foreground">Errors</span>
-              <div className="flex items-center gap-1 font-semibold text-destructive">
-                <XCircle className="h-4 w-4" />
-                <span>{player.errors}</span>
+
+            <div className="flex flex-col items-center bg-muted/15 py-1.5 rounded-md border border-muted/25">
+              <span className="text-xs text-muted-foreground">Errors</span>
+              <div className="flex items-center gap-0.5 font-bold text-red-600 dark:text-red-400">
+                <XCircle className="h-3 w-3" />
+                <span className="text-base">{player.errors}</span>
               </div>
             </div>
-            
-            <div className="flex flex-col items-center bg-muted/30 py-2 rounded-lg">
-              <span className="text-sm text-muted-foreground">Score</span>
-              <span className="font-semibold">
+
+            <div className="flex flex-col items-center bg-muted/15 py-1.5 rounded-md border border-muted/25">
+              <span className="text-xs text-muted-foreground">Score</span>
+              <span className="font-bold text-base">
                 {(player.wpm * (player.accuracy / 100)).toFixed(0)}
               </span>
             </div>
@@ -129,127 +137,110 @@ const PlayerResultCard = ({
   );
 }
 
-export function GameResults({ room, currentUserId, compact }: GameResultsProps) {
+export function GameResults({ room, currentUserId }: GameResultsProps) {
   const { player1, player2, winner } = room;
 
   let resultMessage = "Game Over!";
+  let subMessage = "Here are the results!";
+  let trophyColor = "text-neutral-400"; // Default/Neutral
+
   if (winner === 'draw') {
     resultMessage = "It's a Draw!";
+    subMessage = "An incredibly close match!";
+    trophyColor = "text-blue-500";
   } else if (winner === 'player1' && player1) {
     resultMessage = `${player1.name} Wins!`;
+    subMessage = `${player1.name} took the lead!`;
+    trophyColor = "text-yellow-500";
   } else if (winner === 'player2' && player2) {
     resultMessage = `${player2.name} Wins!`;
+    subMessage = `${player2.name} emerged victorious!`;
+    trophyColor = "text-green-500";
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="w-full"
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className="w-full max-w-3xl mx-auto"
     >
-      <Card className={cn(
-        "overflow-hidden border-0 bg-gradient-to-br from-background via-purple-50 to-background dark:from-muted/30 dark:via-purple-900/10 dark:to-background",
-        compact ? "py-4" : "py-6"
-      )}>
-        <CardHeader className="relative z-10 text-center">
+      <Card className="overflow-hidden relative border-0 shadow-xl px-4 py-5 bg-gradient-to-br from-background via-muted/5 to-background">
+        {/* Decorative background elements */}
+        <div className="absolute top-0 left-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl opacity-40" />
+        <div className="absolute bottom-0 right-0 w-48 h-48 bg-yellow-400/10 rounded-full blur-3xl opacity-40" />
+        <div className="absolute top-1/4 right-1/4 w-12 h-12 bg-purple-500/10 rounded-full blur-2xl opacity-30" />
+
+
+        <CardHeader className="text-center mb-5 pt-3 pb-0">
           <motion.div
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2, type: "spring" }}
-            className="mx-auto mb-4 flex items-center justify-center"
+            initial={{ scale: 0.5, opacity: 0, rotate: -90 }}
+            animate={{ scale: 1, opacity: 1, rotate: 0 }}
+            transition={{ delay: 0.15, type: "spring", stiffness: 80, damping: 12 }}
+            className="mx-auto mb-3 flex items-center justify-center"
           >
             <div className="relative">
-              <Trophy className={cn(
-                "text-amber-500",
-                compact ? "h-10 w-10" : "h-16 w-16"
-              )} />
+              <Trophy className={cn(trophyColor, "h-14 w-14")} />
               <motion.div
-                animate={{ 
-                  rotate: [0, 15, 0, -15, 0],
-                  scale: [1, 1.1, 1]
+                animate={{
+                  rotate: [0, 180, 360],
+                  scale: [1, 1.2, 1]
                 }}
-                transition={{ 
-                  duration: 1.5,
+                transition={{
+                  duration: 2,
                   repeat: Infinity,
-                  repeatType: "reverse"
+                  repeatType: "loop",
+                  ease: "linear"
                 }}
                 className="absolute -top-1 -right-1"
               >
-                <Star className={cn(
-                  "text-yellow-400 fill-yellow-400",
-                  compact ? "h-4 w-4" : "h-6 w-6"
-                )} />
+                <Star className="text-yellow-400 fill-yellow-400" />
               </motion.div>
             </div>
           </motion.div>
-          
-          <CardTitle className={cn(
-            "font-bold bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 bg-clip-text text-transparent",
-            compact ? "text-2xl" : "text-4xl"
-          )}>
+
+          <CardTitle className="font-extrabold tracking-tight text-4xl">
             {resultMessage}
           </CardTitle>
-          
-          {!compact && (
-            <p className="text-muted-foreground mt-2">
-              Here are the final scores from the typing challenge
-            </p>
-          )}
+          <p className="text-muted-foreground mt-1.5 text-base">
+            {subMessage}
+          </p>
         </CardHeader>
-        
-        <CardContent className={cn(
-          "relative z-10",
-          compact ? "px-2 py-0" : "px-4 py-2"
-        )}>
-          <div className={cn(
-            "flex flex-col md:flex-row gap-4 justify-center",
-            compact ? "mt-0" : "mt-4"
-          )}>
+
+        <CardContent className="pt-0 pb-3">
+          <div className="flex flex-col md:flex-row gap-5 justify-center items-center">
             {player1 && (
-              <PlayerResultCard 
-                player={player1} 
-                isWinner={winner === 'player1'} 
+              <PlayerResultCard
+                player={player1}
+                isWinner={winner === 'player1'}
                 isCurrentUser={player1.uid === currentUserId}
-                compact={compact}
               />
             )}
-            
+
             {player2 && (
-              <PlayerResultCard 
-                player={player2} 
-                isWinner={winner === 'player2'} 
+              <PlayerResultCard
+                player={player2}
+                isWinner={winner === 'player2'}
                 isCurrentUser={player2.uid === currentUserId}
-                compact={compact}
               />
             )}
           </div>
-          
+
           {winner === 'draw' && player1 && player2 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.8 }}
-              className="mt-6 text-center py-4 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10"
+              transition={{ delay: 0.6 }}
+              className="mt-5 text-center py-3 rounded-lg bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-blue-500/10 border border-blue-500/20 backdrop-blur-sm"
             >
-              <p className="font-semibold text-primary flex items-center justify-center gap-2">
-                <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
-                Incredibly close match! Both players performed exceptionally well
-                <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+              <p className="font-semibold text-primary flex items-center justify-center gap-1 text-sm">
+                <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                An epic battle! Both contenders showcased remarkable skill.
+                <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
               </p>
             </motion.div>
           )}
         </CardContent>
-        
-        {/* Decorative elements */}
-        {!compact && (
-          <>
-            <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-r from-amber-500/10 to-transparent rounded-full blur-xl" />
-            <div className="absolute bottom-0 right-0 w-48 h-48 bg-gradient-to-r from-purple-500/10 to-transparent rounded-full blur-xl" />
-            <div className="absolute top-1/4 right-10 w-8 h-8 bg-yellow-400/20 rounded-full blur-lg" />
-            <div className="absolute bottom-1/3 left-12 w-6 h-6 bg-purple-400/30 rounded-full blur-lg" />
-          </>
-        )}
       </Card>
     </motion.div>
   );
