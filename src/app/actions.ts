@@ -1,4 +1,3 @@
-
 // src/app/actions.ts
 "use server";
 
@@ -6,29 +5,42 @@ import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { z } from 'zod';
 import { db } from '@/lib/firebase';
 import { generateRoomId } from '@/lib/utils';
-import type { Room, Player, GameSettings } from '@/types';
+import type { Room, Player, GameSettings } from '@/types'; // Ensure types are imported correctly
 import { generateParagraph } from '@/ai/flows/generateParagraph'; // Updated import
 
 const ParagraphLengthSchema = z.enum(['50', '100', '200', '300']).transform(val => parseInt(val, 10) as 50 | 100 | 200 | 300);
 const GameDurationSchema = z.enum(['30', '60', '120']).transform(val => parseInt(val, 10) as 30 | 60 | 120);
 
+// New schema for separate punctuation and numbers
+const ParagraphSettingsSchema = z.object({
+    length: ParagraphLengthSchema,
+    includePunctuation: z.boolean().default(false), // Separate field
+    includeNumbers: z.boolean().default(false),     // Separate field
+});
+
 const CreateRoomInputSchema = z.object({
   hostId: z.string(),
   hostName: z.string(),
+  // Add settings here, assuming default values if not provided
+  settings: ParagraphSettingsSchema.optional(),
 });
 
 export async function createRoomAction(input: z.infer<typeof CreateRoomInputSchema>): Promise<{ roomId: string } | { error: string }> {
   const validation = CreateRoomInputSchema.safeParse(input);
   if (!validation.success) {
+    console.error("CreateRoomAction validation error:", validation.error.errors);
     return { error: "Invalid input for creating room." };
   }
   
-  const { hostId, hostName } = validation.data;
+  const { hostId, hostName, settings } = validation.data;
   const roomId = generateRoomId();
 
+  // Default settings if not provided, or merge with provided
   const initialSettings: GameSettings = {
-    paragraphLength: 100,
-    gameDuration: 60,
+    paragraphLength: settings?.length ?? 100, // Default to 100 if not provided
+    gameDuration: 60, // Default game duration
+    includePunctuation: settings?.includePunctuation ?? false, // Default to false
+    includeNumbers: settings?.includeNumbers ?? false,         // Default to false
   };
 
   const hostPlayer: Player = {
@@ -54,6 +66,7 @@ export async function createRoomAction(input: z.infer<typeof CreateRoomInputSche
     createdAt: serverTimestamp() as any, 
     player1: hostPlayer,
     player2: null,
+    winner: null, // Ensure winner field exists if not already
   };
 
   try {
@@ -66,17 +79,30 @@ export async function createRoomAction(input: z.infer<typeof CreateRoomInputSche
   }
 }
 
-export async function fetchParagraphAction(length: 50 | 100 | 200 | 300): Promise<string> {
+// Updated fetchParagraphAction to accept the new options
+export async function fetchParagraphAction(length: 50 | 100 | 200 | 300, includePunctuation: boolean = false, includeNumbers: boolean = false): Promise<string> {
   try {
     // Validate the input to this action
     ParagraphLengthSchema.parse(length.toString()); 
     
     // Call the imported generateParagraph function, ensuring the input matches its schema
-    const paragraph = await generateParagraph({ length: length.toString() as '50' | '100' | '200' | '300' });
+    const paragraph = await generateParagraph({ 
+        length: length.toString() as '50' | '100' | '200' | '300', 
+        includePunctuation: includePunctuation,
+        includeNumbers: includeNumbers
+    });
     return paragraph;
   } catch (error) {
     console.error("Error generating paragraph via AI flow:", error);
-    return "The quick brown fox jumps over the lazy dog. A lazy fox is not a quick fox. Pack my box with five dozen liquor jugs. This is a fallback paragraph because the AI service might be unavailable or encountered an error.";
+    // Provide a fallback that respects the requested options if possible
+    let fallback = "The quick brown fox jumps over the lazy dog. ";
+    if (includePunctuation) {
+        fallback += "It's a sunny day, isn't it?";
+    }
+    if (includeNumbers) {
+        fallback += " We need 5 apples and 3 oranges for the recipe.";
+    }
+    return fallback;
   }
 }
 
@@ -119,13 +145,14 @@ export async function joinRoomAction(input: z.infer<typeof JoinRoomInputSchema>)
       errors: 0,
       progress: 0,
       isHost: false,
-      isReady: true,
+      isReady: true, // Assume guest is ready upon joining
     };
 
+    // Ensure we correctly merge and don't overwrite existing data unnecessarily
     await setDoc(roomRef, { 
       guestId: guestId, 
       player2: guestPlayer,
-      status: 'ready' 
+      status: 'ready' // Transition to ready if host was waiting
     }, { merge: true });
     
     return { success: true };

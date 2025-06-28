@@ -17,6 +17,13 @@ export interface Player {
   isReady?: boolean; // For indicating readiness before game starts
 }
 
+// From src/types.ts
+export interface GameSettings {
+  paragraphLength: 50 | 100 | 200 | 300;
+  gameDuration: 30 | 60 | 120;
+  includePunctuation: boolean; // <--- This one
+  includeNumbers: boolean;     // <--- And this one
+}
 export interface Room {
   id: string;
   hostId: string;
