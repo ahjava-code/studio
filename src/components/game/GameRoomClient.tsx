@@ -403,6 +403,10 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
               <CardTitle className="text-3xl font-headline">Room: {roomId}</CardTitle>
             </CardHeader>
           }
+          {
+            room.status === "waiting" &&
+            <RoomInfo roomId={roomId} />
+          }
           {room.status !== "finished" &&
             <PlayerInfo player1={room.player1} player2={room.player2} currentUserId={user.uid} />
           }
