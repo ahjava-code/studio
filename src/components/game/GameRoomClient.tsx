@@ -394,12 +394,12 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
     : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* --- LOBBY/PRE-GAME UI (Hidden during 'playing') --- */}
       {room.status !== 'playing' && (
         <>
           {room.status !== "finished" &&
-            <CardHeader className="text-center pb-2">
+            <CardHeader className="text-center pb-1">
               <CardTitle className="text-3xl font-headline">Room: {roomId}</CardTitle>
             </CardHeader>
           }

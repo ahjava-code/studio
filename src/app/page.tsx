@@ -30,7 +30,7 @@ export default function HomePage() {
         </CardContent>
       </Card>
       <footer className="text-center mt-12 text-sm text-muted-foreground">
-        <p>&copy; {new Date().getFullYear()} Type Duel. Press 'Cmd/Ctrl + B' to toggle sidebar (if applicable).</p>
+        <p>&copy; {new Date().getFullYear()} Type Duel.</p>
       </footer>
     </div>
   );
