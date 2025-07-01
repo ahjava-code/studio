@@ -4,6 +4,7 @@ import './globals.css';
 import { AuthProvider } from '@/components/auth/AuthProvider';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/theme-provider'; // For light/dark mode toggle
+import { Analytics } from '@vercel/analytics/next';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -35,6 +36,7 @@ export default function RootLayout({
           <AuthProvider>
             <main className="flex-grow container mx-auto p-4">
               {children}
+              <Analytics />
             </main>
             <Toaster />
           </AuthProvider>
