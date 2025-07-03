@@ -1,4 +1,5 @@
 // src/components/game/ParagraphDisplay.tsx
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import React, { useEffect, useRef } from 'react';
 
@@ -10,9 +11,12 @@ interface ParagraphDisplayProps {
 
 export function ParagraphDisplay({ paragraphText, typedText, currentFocusIndex }: ParagraphDisplayProps) {
   const charRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  // The scrollAreaRef is not actively used in the component logic, but we can leave it
+  // in case it's needed for future functionality or by the ScrollArea component itself.
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Re-initialize refs array when the source paragraph changes
     charRefs.current = Array(paragraphText.length).fill(null);
   }, [paragraphText]);
 
@@ -43,6 +47,7 @@ export function ParagraphDisplay({ paragraphText, typedText, currentFocusIndex }
   };
 
   useEffect(() => {
+    // This effect handles scrolling the current character into view
     if (currentFocusIndex >= 0 && currentFocusIndex < charRefs.current.length) {
       const targetElement = charRefs.current[currentFocusIndex];
       if (targetElement) {
@@ -55,25 +60,49 @@ export function ParagraphDisplay({ paragraphText, typedText, currentFocusIndex }
     }
   }, [currentFocusIndex]);
 
+  // We need a counter to track the absolute index of each character
+  let globalCharIndex = 0;
+
   return (
     <ScrollArea ref={scrollAreaRef} className="h-40 md:h-48 w-full rounded-md border p-4 bg-card shadow">
-      <p className="text-lg md:text-xl leading-relaxed whitespace-pre-wrap font-serif break-words">
-        {paragraphText.split('').map((char, index) => (
-          <span
-            key={index}
-            ref={(el: HTMLSpanElement | null) => {
-              // Re-initialize or update the ref array
-              if (!charRefs.current) { // Defensive check, though useEffect should handle this
-                charRefs.current = [];
-              }
-              charRefs.current[index] = el;
-            }}
-            className={getCharClass(index)}
-          >
-            {/* Render space as '·' only if it's a typed incorrect character */}
-            {char === ' ' && typedText.length > index && typedText[index] !== paragraphText[index] ? '·' : char}
-          </span>
-        ))}
+      {/*
+        MODIFICATION: Removed 'break-words' to prevent the browser from breaking words
+        that we are now grouping manually. 'whitespace-pre-wrap' is kept to respect
+        the source text's whitespace and wrapping.
+      */}
+      <p className="text-lg md:text-xl leading-relaxed whitespace-pre-wrap font-serif">
+        {/*
+          MODIFICATION: Split by words and whitespace chunks instead of individual characters.
+          The regex /_(\s+)_/ splits the string by whitespace and keeps the whitespace as part of the array.
+          e.g., "Hello  world" -> ["Hello", "  ", "world"]
+        */}
+        {paragraphText.split(/(\s+)/).map((chunk, chunkIndex) => {
+          // A chunk is either a word or a string of whitespace.
+          // We wrap word chunks in an 'inline-flex' container to prevent them from breaking.
+          const isWord = !/\s+/.test(chunk);
+
+          return (
+            <span key={chunkIndex} className={isWord ? 'inline-flex' : ''}>
+              {chunk.split('').map((char) => {
+                const currentIndex = globalCharIndex++;
+                return (
+                  <span
+                    key={currentIndex}
+                    ref={(el: HTMLSpanElement | null) => {
+                      charRefs.current[currentIndex] = el;
+                    }}
+                    className={getCharClass(currentIndex)}
+                  >
+                    {/* Render space as '·' only if it's a typed incorrect character */}
+                    {char === ' ' && typedText.length > currentIndex && typedText[currentIndex] !== ' '
+                      ? '·'
+                      : char}
+                  </span>
+                );
+              })}
+            </span>
+          );
+        })}
       </p>
     </ScrollArea>
   );
