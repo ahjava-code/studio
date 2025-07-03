@@ -114,7 +114,7 @@ export function GameSettingsComponent({ settings, onSettingsChange, disabled }: 
               checked={localSettings.includePunctuation}
               onCheckedChange={(checked) => handleSettingChange('includePunctuation', checked)}
               disabled={disabled}
-              className="ml-4 data-[state=checked]:bg-gray-200 data-[state=unchecked]:bg-[#54c3e8]"
+              className="ml-4 data-[state=checked]:bg-[#54c3e8] data-[state=unchecked]:bg-[#0d1a26]"
             />
           </div>
 
@@ -133,7 +133,7 @@ export function GameSettingsComponent({ settings, onSettingsChange, disabled }: 
               checked={localSettings.includeNumbers}
               onCheckedChange={(checked) => handleSettingChange('includeNumbers', checked)}
               disabled={disabled}
-              className="ml-4 data-[state=checked]:bg-gray-200 data-[state=unchecked]:bg-[#54c3e8]"
+              className="ml-4 data-[state=checked]:bg-[#54c3e8] data-[state=unchecked]:bg-[#0d1a26]"
             />
           </div>
         </div>
