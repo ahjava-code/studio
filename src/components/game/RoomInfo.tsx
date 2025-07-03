@@ -109,7 +109,7 @@ export function RoomInfo({ roomId }: RoomInfoProps) {
         </div>
 
         {/* Room URL Section */}
-        {roomUrl && (
+        {/* {roomUrl && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <LinkIcon className="h-4 w-4" />
@@ -137,7 +137,7 @@ export function RoomInfo({ roomId }: RoomInfoProps) {
               </Button>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Share Button */}
         <Button
