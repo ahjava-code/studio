@@ -122,6 +122,15 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
   }, [room, isHost]); // Dependency array now correctly tracks room changes
 
 
+  // FIX: This useEffect resets local state for all clients when a new game is prepared.
+  useEffect(() => {
+    // When the game status resets (e.g., to 'ready' after being 'finished'),
+    // we must reset any local gameplay state on ALL clients.
+    if (room?.status === 'ready' || room?.status === 'waiting') {
+      setIsClientTimeUp(false);
+    }
+  }, [room?.status]); // This runs whenever the game status changes.
+
   const handleSettingsChange = async (newSettings: Partial<GameSettings>) => {
     if (!room || !isHost) return;
     const roomRef = doc(db, 'rooms', roomId);
