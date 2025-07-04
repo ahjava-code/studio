@@ -5,6 +5,7 @@ import { AuthProvider } from '@/components/auth/AuthProvider';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/theme-provider'; // For light/dark mode toggle
 import { Analytics } from '@vercel/analytics/next';
+import { Navbar } from '@/components/layout/Navbar';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -35,6 +36,10 @@ export default function RootLayout({
         >
           <AuthProvider>
             {/* Change this line: */}
+            <div className='mt-10'>
+              <Navbar />
+            </div>
+            
             <main className="flex-grow"> {/* Removed container and p-4 */}
               {children}
               <Analytics />

@@ -2,7 +2,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui2/button';
 import { ArrowRight } from 'lucide-react';
 
 export const HeroSection = () => {
@@ -23,8 +23,8 @@ export const HeroSection = () => {
       </p>
       <div className="flex justify-center">
         {/* A single, powerful Call to Action button */}
-        <Button onClick={navigateToLobby} className="text-lg px-8 py-4">
-          Play Now <ArrowRight className="ml-2 h-5 w-5" />
+        <Button onClick={navigateToLobby} variant='primary' className="text-lg px-8 py-4">
+          Play Now
         </Button>
       </div>
     </section>
