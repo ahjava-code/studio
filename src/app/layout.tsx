@@ -34,7 +34,8 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <main className="flex-grow container mx-auto p-4">
+            {/* Change this line: */}
+            <main className="flex-grow"> {/* Removed container and p-4 */}
               {children}
               <Analytics />
             </main>
