@@ -5,6 +5,10 @@ import { Input } from '@/components/ui/input';
 import { ResultsCard } from './ResultsCard';
 import { Clock, Type } from 'lucide-react';
 
+// At the top of TypingTestClient.tsx
+import { useAuth } from '@/lib/hooks/useAuth';
+import { saveGameResult } from '@/lib/gameLogic';
+
 // --- Helper Components & Constants ---
 
 const TEXTS = {
@@ -35,6 +39,8 @@ const TextDisplay = ({ text, userInput }: { text: string; userInput: string }) =
 // --- Main Component ---
 
 export const TypingTestClient = () => {
+
+    const { user } = useAuth();
     // State Management
     const [gameState, setGameState] = useState<GameState>('waiting');
     const [gameMode, setGameMode] = useState<GameMode>('text');
@@ -124,6 +130,15 @@ export const TypingTestClient = () => {
             if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
         };
     }, [gameState, gameMode, finishGame]);
+
+    useEffect(() => {
+        // Ensure the game is finished, we have a user, and a valid score to save.
+        if (gameState === 'finished' && user && stats.wpm > 0) {
+            // We call saveGameResult with the 'test' game mode.
+            saveGameResult(user, stats.wpm, stats.accuracy, 'test');
+        }
+        // This dependency array ensures the effect runs only when these values change.
+    }, [gameState, user, stats]);
 
     const startGame = () => {
         if (gameState === 'waiting') {

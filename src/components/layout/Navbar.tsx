@@ -9,6 +9,7 @@ import { Menu, X } from 'lucide-react';
 // Define our navigation links in an array for easier mapping
 const navLinks = [
   { href: '/play', label: 'Play' },
+  { href: '/leaderboards', label: 'Leaderboards' },
   { href: '/typing-test', label: 'Typing Test' },
   { href: '/how-to-play', label: 'How to Play' },
   { href: '/about', label: 'About' },

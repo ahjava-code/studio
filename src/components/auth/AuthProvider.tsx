@@ -6,6 +6,8 @@ import type { User } from 'firebase/auth';
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface AuthContextType {
   user: User | null;
@@ -21,6 +23,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
+
+        const userRef = doc(db, 'users', currentUser.uid);
+        await setDoc(userRef, {
+          displayName: `Player_${currentUser.uid.substring(0, 6)}`
+        }, { merge: true }); // merge: true prevents overwriting existing data
+
         setUser(currentUser);
         setLoading(false);
       } else {

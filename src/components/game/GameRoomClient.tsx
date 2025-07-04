@@ -23,6 +23,8 @@ import { GameResults } from './GameResults';
 import { fetchParagraphAction } from '@/app/actions'; // Updated actions import
 import { calculateWpm, calculateAccuracy } from '@/lib/utils';
 
+import { saveGameResult } from '@/lib/gameLogic';
+
 interface GameRoomClientProps {
   roomId: string;
 }
@@ -362,6 +364,25 @@ export function GameRoomClient({ roomId }: GameRoomClientProps) {
     }
   };
 
+  useEffect(() => {
+    // Ensure the room exists, the status is 'finished', and we have a logged-in user.
+    if (room?.status === 'finished' && user) {
+      let currentPlayerStats = null;
+
+      // Find the current user's data from the final room state.
+      if (room.player1?.uid === user.uid) {
+        currentPlayerStats = room.player1;
+      } else if (room.player2?.uid === user.uid) {
+        currentPlayerStats = room.player2;
+      }
+
+      // If we found the player and they have a score, save it.
+      if (currentPlayerStats && currentPlayerStats.wpm > 0) {
+        saveGameResult(user, currentPlayerStats.wpm, currentPlayerStats.accuracy, 'duel');
+      }
+    }
+    // This effect should run whenever the room status changes.
+  }, [room?.status, user, room?.player1, room?.player2]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><Loader2 className="h-12 w-12 animate-spin text-primary" /><p className="ml-4">Loading Room...</p></div>;
